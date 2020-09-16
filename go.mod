@@ -1,4 +1,4 @@
-module github.com/zondatw/goZzzWorker
+module github.com/zondatw/gozzzworker
 
 go 1.13
 

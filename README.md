@@ -1,6 +1,6 @@
-# goZzzWorker
+# gozzzworker
 
-goZzzWorker is Go-based background tasks worker.  
+gozzzworker is Go-based background tasks worker.  
 
 Now:  
 
@@ -19,10 +19,10 @@ Future:
 ## Installation
 
 To install  
-`go get github.com/zondatw/goZzzWorker`  
+`go get github.com/zondatw/gozzzworker`  
 
 To import  
-`import "github.com/zondatw/goZzzWorker"`  
+`import "github.com/zondatw/gozzzworker"`  
 
 ## Quickstart
 
@@ -38,7 +38,7 @@ workerObj.RegisterTaskFunction("Task Name", taskFunction)
 
 WorkerSetting:  
 ```go
-&goZzzWorker.WorkerSetting{
+&gozzzworker.WorkerSetting{
     Size:     3,                   // How many concurrent workers do you want
     Address:  "localhost:6379",    // Redis path
     Password: "",                  // Redis password, set empty string if no password 
@@ -55,7 +55,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/zondatw/goZzzWorker"
+	"github.com/zondatw/gozzzworker"
 )
 
 func task1(args json.RawMessage) error {
@@ -75,7 +75,7 @@ func task2(args json.RawMessage) error {
 }
 
 func main() {
-	w := goZzzWorker.NewWorker(&goZzzWorker.WorkerSetting{
+	w := gozzzworker.NewWorker(&gozzzworker.WorkerSetting{
 		Size:     3,
 		Address:  "localhost:6379",
         Password: "",
@@ -92,20 +92,20 @@ func main() {
 And you can push test data to redis, just follow rule:
 ```text
 # HASH type
-key: goZzzWorker:task:msg
-field: 1 (task id need match goZzzWorker:task:queue value)
+key: gozzzworker:task:msg
+field: 1 (task id need match gozzzworker:task:queue value)
 value: '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}' (json format args)
 
 # ZSet
-key: goZzzWorker:task:queue
-value: 1 (task id need match goZzzWorker:task:msg field)
+key: gozzzworker:task:queue
+value: 1 (task id need match gozzzworker:task:msg field)
 score: 123 (timestamp what executed time do you want)
 ```
 
 example redis command:
 ```redis
-HSET goZzzWorker:task:msg 1 '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}'
-ZAdd goZzzWorker:task:queue 123 1
+HSET gozzzworker:task:msg 1 '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}'
+ZAdd gozzzworker:task:queue 123 1
 ```
 
 or you can using [goZzzProducer](http://github.com/zondatw/goZzzProducer)  

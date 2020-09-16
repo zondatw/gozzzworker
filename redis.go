@@ -1,4 +1,4 @@
-package goZzzWorker
+package gozzzworker
 
 import (
 	"context"

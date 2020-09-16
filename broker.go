@@ -1,4 +1,4 @@
-package goZzzWorker
+package gozzzWorker
 
 import (
 	"encoding/json"
@@ -26,8 +26,8 @@ func NewBroker(addTask func(string, json.RawMessage), address string, password s
 	return &Broker{
 		addTask:  addTask,
 		conn:     NewRedisConn(address, password, db),
-		queueKey: "goZzzWorker:task:queue",
-		msgKey:   "goZzzWorker:task:msg",
+		queueKey: "gozzzworker:task:queue",
+		msgKey:   "gozzzworker:task:msg",
 	}
 }
 
