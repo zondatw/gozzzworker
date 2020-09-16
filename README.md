@@ -1,5 +1,7 @@
 # gozzzworker
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/zondatw/gozzzworker)](https://goreportcard.com/report/github.com/zondatw/gozzzworker)
+
 gozzzworker is Go-based background tasks worker.  
 
 Now:  
