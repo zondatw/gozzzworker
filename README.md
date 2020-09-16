@@ -108,7 +108,7 @@ HSET gozzzworker:task:msg 1 '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}'
 ZAdd gozzzworker:task:queue 123 1
 ```
 
-or you can using [goZzzProducer](http://github.com/zondatw/goZzzProducer)  
+or you can using [gozzzproducer](http://github.com/zondatw/gozzzproducer)  
 
 ## Close
 
