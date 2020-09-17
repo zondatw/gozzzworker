@@ -80,8 +80,7 @@ func main() {
 	w := gozzzworker.NewWorker(&gozzzworker.WorkerSetting{
 		Size:     3,
 		Address:  "localhost:6379",
-        Password: "",
-        
+		Password: "",
 		DB:       0,
 	})
 	w.RegisterTaskFunction("Task 1", task1)

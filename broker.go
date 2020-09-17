@@ -1,4 +1,4 @@
-package gozzzWorker
+package gozzzworker
 
 import (
 	"encoding/json"
@@ -11,8 +11,8 @@ import (
 type Broker struct {
 	conn     *RedisConn
 	addTask  func(string, json.RawMessage)
-	queueKey string
-	msgKey   string
+	queueKey string // queue key on redis
+	msgKey   string // msg key on redis
 }
 
 // TaskJsonType is register task json schema
