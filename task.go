@@ -5,7 +5,7 @@ import (
 	"sync"
 )
 
-type taskFuncType func(args json.RawMessage) error
+type taskFuncType func(args json.RawMessage) (interface{}, error)
 
 // TaskSetting is a setting about task function mapping
 type TaskSetting struct {
@@ -24,18 +24,19 @@ func NewTaskSetting() *TaskSetting {
 
 // Task struct
 type Task struct {
+	id       string
 	function taskFuncType
 	args     json.RawMessage
 }
 
 // NewTask create new task
-func NewTask(function taskFuncType, args json.RawMessage) *Task {
-	return &Task{function: function, args: args}
+func NewTask(id string, function taskFuncType, args json.RawMessage) *Task {
+	return &Task{id: id, function: function, args: args}
 }
 
 // Run task function
-func (t *Task) Run(wg *sync.WaitGroup) (err error) {
-	err = t.function(t.args)
+func (t *Task) Run(wg *sync.WaitGroup) (retMsg interface{}, err error) {
+	retMsg, err = t.function(t.args)
 	wg.Done()
 	return
 }

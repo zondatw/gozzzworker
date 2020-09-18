@@ -57,6 +57,16 @@ func (rc *RedisConn) GetHashValue(key string, field string) (value string, retEr
 	return
 }
 
+// SetHashValue set Hash field and value
+func (rc *RedisConn) SetHashValue(key string, field string, value string) (retErr error) {
+	ctx := context.Background()
+	hSet := rc.conn.HSet(ctx, key, field, value)
+	if err := hSet.Err(); err != nil {
+		retErr = err
+	}
+	return
+}
+
 // RemoveHash remove hash
 func (rc *RedisConn) RemoveHash(key string, field string) (retErr error) {
 	ctx := context.Background()

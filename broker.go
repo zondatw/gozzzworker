@@ -4,35 +4,43 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sync"
 	"time"
 )
 
 // Broker is broker struct
 type Broker struct {
-	conn     *RedisConn
-	addTask  func(string, json.RawMessage)
-	queueKey string // queue key on redis
-	msgKey   string // msg key on redis
+	conn        *RedisConn
+	addTask     func(string, string, json.RawMessage)
+	queueKey    string // queue key on redis
+	msgKey      string // msg key on redis
+	retKey      string // ret key on redis
+	taskRetChan <-chan *taskRetData
+	taskRetWg   *sync.WaitGroup
 }
 
-// TaskJsonType is register task json schema
-type TaskJsonType struct {
+// TaskJSONType is register task json schema
+type TaskJSONType struct {
 	Task string          `json:"task"`
 	Args json.RawMessage `json:"args"`
 }
 
 // NewBroker will initialize a new broker
-func NewBroker(addTask func(string, json.RawMessage), address string, password string, db int) *Broker {
+func NewBroker(addTask func(string, string, json.RawMessage), taskRetChan <-chan *taskRetData, taskRetWg *sync.WaitGroup, address string, password string, db int) *Broker {
 	return &Broker{
-		addTask:  addTask,
-		conn:     NewRedisConn(address, password, db),
-		queueKey: "gozzzworker:task:queue",
-		msgKey:   "gozzzworker:task:msg",
+		addTask:     addTask,
+		conn:        NewRedisConn(address, password, db),
+		queueKey:    "gozzzworker:task:queue",
+		msgKey:      "gozzzworker:task:msg",
+		retKey:      "gozzzworker:task:ret",
+		taskRetChan: taskRetChan,
+		taskRetWg:   taskRetWg,
 	}
 }
 
 // Run get due tasks
 func (b *Broker) Run() {
+	go b.storeTasksRetData()
 	for {
 		now := fmt.Sprintf("%d", time.Now().Unix())
 		taskIDArray, err := b.conn.GetZRangeByScoreLessThan(b.queueKey, now)
@@ -56,10 +64,20 @@ func (b *Broker) addTasks(taskIDArray []string) {
 		if err != nil {
 			log.Println("[addTasks] Err:", err)
 		} else {
-			var jsonData TaskJsonType
+			var jsonData TaskJSONType
 			json.Unmarshal([]byte(msg), &jsonData)
-			b.addTask(jsonData.Task, jsonData.Args)
+			b.addTask(taskID, jsonData.Task, jsonData.Args)
 		}
 		b.conn.RemoveHash(b.msgKey, taskID)
+	}
+}
+
+// storeTasksRetData store tasks return data to redis
+func (b *Broker) storeTasksRetData() {
+	for taskRet := range b.taskRetChan {
+		b.conn.SetHashValue(
+			b.retKey, taskRet.taskID, taskRet.retMsg,
+		)
+		b.taskRetWg.Done()
 	}
 }

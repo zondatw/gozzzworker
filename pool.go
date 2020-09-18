@@ -2,6 +2,7 @@ package gozzzworker
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -9,14 +10,19 @@ import (
 	"syscall"
 )
 
+type taskRetData struct {
+	taskID string
+	retMsg string
+}
+
 // Pool is worker pool struct
 type Pool struct {
 	size        int
 	taskSetting *TaskSetting
 	taskChan    chan *Task
-	ErrorChan   chan error
-	wg          sync.WaitGroup
-	ErrWg       sync.WaitGroup
+	taskWg      sync.WaitGroup
+	TaskRetChan chan *taskRetData
+	TaskRetWg   sync.WaitGroup
 }
 
 // NewPool will initialize a new pool
@@ -25,7 +31,7 @@ func NewPool(size int) *Pool {
 		size:        size,
 		taskSetting: NewTaskSetting(),
 		taskChan:    make(chan *Task),
-		ErrorChan:   make(chan error),
+		TaskRetChan: make(chan *taskRetData),
 	}
 }
 
@@ -43,9 +49,10 @@ func (p *Pool) Run() {
 }
 
 // AddTask to task chan
-func (p *Pool) AddTask(funcName string, args json.RawMessage) {
-	p.wg.Add(1)
+func (p *Pool) AddTask(taskID string, funcName string, args json.RawMessage) {
+	p.taskWg.Add(1)
 	p.taskChan <- NewTask(
+		taskID,
 		p.taskSetting.funcMap[funcName],
 		args,
 	)
@@ -53,10 +60,24 @@ func (p *Pool) AddTask(funcName string, args json.RawMessage) {
 
 func (p *Pool) worker() {
 	for task := range p.taskChan {
-		err := task.Run(&p.wg)
-		if err != nil {
-			p.ErrWg.Add(1)
-			p.ErrorChan <- err
+		var retJSONStr string
+		status := "Fail"
+		retMsg, err := task.Run(&p.taskWg)
+		if err == nil {
+			retJSONByteArrayData, err := json.Marshal(retMsg)
+			if err != nil {
+				retJSONStr = fmt.Sprintf(`{"Error": "Marchal json field: %s"}`, err.Error())
+			} else {
+				status = "Success"
+				retJSONStr = string(retJSONByteArrayData)
+			}
+		} else {
+			retJSONStr = fmt.Sprintf(`{"Error": "%s"}`, err.Error())
+		}
+		p.TaskRetWg.Add(1)
+		p.TaskRetChan <- &taskRetData{
+			taskID: task.id,
+			retMsg: fmt.Sprintf(`{"status": "%s", "msg": %s}`, status, retJSONStr),
 		}
 	}
 }
@@ -78,9 +99,9 @@ func (p *Pool) setupCloseHandler() {
 func (p *Pool) End() {
 	log.Println("[End] Close task channel")
 	close(p.taskChan)
-	p.wg.Wait()
-	log.Println("[End] Close error channel")
-	close(p.ErrorChan)
-	p.ErrWg.Wait()
+	p.taskWg.Wait()
+	log.Println("[End] Close task ret channel")
+	close(p.TaskRetChan)
+	p.TaskRetWg.Wait()
 	log.Println("[End] Close finish")
 }

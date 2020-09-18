@@ -1,8 +1,6 @@
 package gozzzworker
 
-import "log"
-
-// Wokrer is worker struct
+// Worker is worker struct
 type Worker struct {
 	pool   *Pool
 	broker *Broker
@@ -19,7 +17,7 @@ type WorkerSetting struct {
 // NewWorker will initialize a new worker
 func NewWorker(setting *WorkerSetting) *Worker {
 	pool := NewPool(setting.Size)
-	broker := NewBroker(pool.AddTask, setting.Address, setting.Password, setting.DB)
+	broker := NewBroker(pool.AddTask, pool.TaskRetChan, &pool.TaskRetWg, setting.Address, setting.Password, setting.DB)
 	return &Worker{
 		pool:   pool,
 		broker: broker,
@@ -34,16 +32,7 @@ func (w *Worker) RegisterTaskFunction(funcName string, function taskFuncType) {
 // Run worker
 func (w *Worker) Run() {
 	w.pool.Run()
-	go w.PrintErr()
 	w.BrokerRun()
-}
-
-// PrintErr will print task error
-func (w *Worker) PrintErr() {
-	for err := range w.pool.ErrorChan {
-		log.Println("[Pool error] Err:", err)
-		w.pool.ErrWg.Done()
-	}
 }
 
 // BrokerRun will run broker

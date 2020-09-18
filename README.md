@@ -9,10 +9,10 @@ Now:
 * Run worker to execute task
 * Specify execution time  
 * Supported redis
+* Return json message after task finished
 
 Future:  
 
-* Return json message after task finished
 * Retry task when failed
 * Task priority
 * Versioning?
@@ -30,7 +30,7 @@ To import
 
 task function need to follow rule:  
 ```go
-func(args json.RawMessage) error
+func(args json.RawMessage) (interface{}, error)
 ```
 
 and register function using  
@@ -60,7 +60,7 @@ import (
 	"github.com/zondatw/gozzzworker"
 )
 
-func task1(args json.RawMessage) error {
+func task1(args json.RawMessage) (interface{}, error) {
 	type ArgType struct {
 		A int    `json:"a"`
 		B string `json:"b"`
@@ -68,12 +68,21 @@ func task1(args json.RawMessage) error {
 	var argData ArgType
 	json.Unmarshal(args, &argData)
 	fmt.Println("Task 1:", argData.A, argData.B)
-	return nil
+
+	type retType struct {
+		C int    `json:"c"`
+		D string `json:"d"`
+	}
+	ret := &retType{
+		C: 123456,
+		D: "Yooooooooooooooooooooooooooooooooooo",
+	}
+	return ret, nil
 }
 
-func task2(args json.RawMessage) error {
+func task2(args json.RawMessage) (interface{}, error) {
 	fmt.Println("Task 2:", args)
-	return errors.New("yooooooooo")
+	return "", errors.New("yooooooooo")
 }
 
 func main() {
@@ -108,6 +117,28 @@ example redis command:
 HSET gozzzworker:task:msg 1 '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}'
 ZAdd gozzzworker:task:queue 123 1
 ```
+
+Get return message after execute task
+```text
+# HASH type
+key: gozzzworker:task:ret
+field: 1 (task id need match gozzzworker:task:msg field)
+```
+
+example redis command:
+```redis
+HGET gozzzworker:task:ret 1
+```
+
+Return message example:
+* success
+	```json
+	{"status": "Success", "msg": {"c":123456,"d":"Yooooooooooooooooooooooooooooooooooo"}}
+	```
+* fail
+	```json
+	{"status": "Fail", "msg": {"Error": "yooooooooo"}}
+	```
 
 or you can using [gozzzproducer](http://github.com/zondatw/gozzzproducer)  
 
