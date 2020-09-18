@@ -119,6 +119,12 @@ ZAdd gozzzworker:task:queue 123 1
 ```
 
 Get return message after execute task
+```go
+type retMsgType struct {
+	Status string `json:"status"` // complete execution
+	Msg    string `json:"msg"` // return message json type
+}
+```
 ```text
 # HASH type
 key: gozzzworker:task:ret

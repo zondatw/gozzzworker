@@ -10,9 +10,16 @@ import (
 	"syscall"
 )
 
+// taskRetData is return data struct for taskRetChan
 type taskRetData struct {
 	taskID string
 	retMsg string
+}
+
+// taskMsgType is return message json schema
+type retMsgType struct {
+	Status string `json:"status"` // complete execution
+	Msg    string `json:"msg"`    // return message json type
 }
 
 // Pool is worker pool struct
@@ -75,9 +82,13 @@ func (p *Pool) worker() {
 			retJSONStr = fmt.Sprintf(`{"Error": "%s"}`, err.Error())
 		}
 		p.TaskRetWg.Add(1)
+		retMsgByteArray, err := json.Marshal(&retMsgType{
+			Status: status,
+			Msg:    retJSONStr,
+		})
 		p.TaskRetChan <- &taskRetData{
 			taskID: task.id,
-			retMsg: fmt.Sprintf(`{"status": "%s", "msg": %s}`, status, retJSONStr),
+			retMsg: string(retMsgByteArray),
 		}
 	}
 }
