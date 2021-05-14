@@ -1,6 +1,7 @@
 package gozzzworker
 
 import (
+	"container/heap"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,7 +29,7 @@ type Pool struct {
 	size          int
 	mux           sync.Mutex
 	taskSetting   *TaskSetting
-	priorityQueue []*Task
+	priorityQueue PriorityQueue
 	taskChan      chan *Task
 	taskWg        sync.WaitGroup
 	TaskRetChan   chan *taskRetData
@@ -39,7 +40,7 @@ type Pool struct {
 func NewPool(size int) *Pool {
 	return &Pool{
 		size:          size,
-		priorityQueue: make([]*Task, 0),
+		priorityQueue: make(PriorityQueue, 0),
 		taskSetting:   NewTaskSetting(),
 		taskChan:      make(chan *Task),
 		TaskRetChan:   make(chan *taskRetData),
@@ -66,13 +67,16 @@ func (p *Pool) AddTask(taskID string, funcName string, args json.RawMessage, pri
 	log.Printf("[Pool AddTask] taskID %s (%d)", taskID, priority)
 	p.mux.Lock()
 	defer p.mux.Unlock()
-	p.priorityQueue = append(
-		p.priorityQueue,
-		NewTask(
-			taskID,
-			p.taskSetting.funcMap[funcName],
-			args,
-		),
+	heap.Push(
+		&p.priorityQueue,
+		&TaskNode{
+			priority: float64(priority),
+			task: NewTask(
+				taskID,
+				p.taskSetting.funcMap[funcName],
+				args,
+			),
+		},
 	)
 }
 
@@ -80,12 +84,15 @@ func (p *Pool) dispatcher() {
 	for {
 		for {
 			p.mux.Lock()
-			log.Println(len(p.priorityQueue))
-			if len(p.priorityQueue) == 0 {
+			if p.priorityQueue.Len() == 0 {
 				p.mux.Unlock()
 				break
 			}
 			p.passTaskToChan()
+			for index := 0; index < p.priorityQueue.Len(); index++ {
+				fmt.Printf("t %s %f, ", p.priorityQueue[index].task.id[:6], p.priorityQueue[index].priority)
+			}
+			fmt.Println("")
 			p.mux.Unlock()
 		}
 
@@ -94,9 +101,9 @@ func (p *Pool) dispatcher() {
 }
 
 func (p *Pool) passTaskToChan() {
-	log.Printf("[Pool passTaskToChan] taskID %s", p.priorityQueue[0].id)
-	p.taskChan <- p.priorityQueue[0]
-	p.priorityQueue = p.priorityQueue[1:]
+	taskNode := heap.Pop(&p.priorityQueue).(*TaskNode)
+	log.Printf("[Pool passTaskToChan] taskID %s (%f)", taskNode.task.id, taskNode.priority)
+	p.taskChan <- taskNode.task
 }
 
 func (p *Pool) worker() {
