@@ -10,11 +10,11 @@ Now:
 * Specify execution time  
 * Supported redis
 * Return json message after task finished
+* Task priority
 
 Future:  
 
 * Retry task when failed
-* Task priority
 * Versioning?
 * RabbitMQ?
 
