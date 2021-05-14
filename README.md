@@ -104,7 +104,7 @@ And you can push test data to redis, just follow rule:
 # HASH type
 key: gozzzworker:task:msg
 field: 1 (task id need match gozzzworker:task:queue value)
-value: '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}' (json format args)
+value: '{"task":"Task 1","args":{"a":1,"b":"yoooo"},"priority":0}' (json format args)
 
 # ZSet
 key: gozzzworker:task:queue
@@ -114,7 +114,7 @@ score: 123 (timestamp what executed time do you want)
 
 example redis command:
 ```redis
-HSET gozzzworker:task:msg 1 '{"task":"Task 1","args":{"a":1,"b":"yoooo"}}'
+HSET gozzzworker:task:msg 1 '{"task":"Task 1","args":{"a":1,"b":"yoooo"},"priority":0}'
 ZAdd gozzzworker:task:queue 123 1
 ```
 

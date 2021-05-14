@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 )
 
 // taskRetData is return data struct for taskRetChan
@@ -24,21 +25,24 @@ type retMsgType struct {
 
 // Pool is worker pool struct
 type Pool struct {
-	size        int
-	taskSetting *TaskSetting
-	taskChan    chan *Task
-	taskWg      sync.WaitGroup
-	TaskRetChan chan *taskRetData
-	TaskRetWg   sync.WaitGroup
+	size          int
+	mux           sync.Mutex
+	taskSetting   *TaskSetting
+	priorityQueue []*Task
+	taskChan      chan *Task
+	taskWg        sync.WaitGroup
+	TaskRetChan   chan *taskRetData
+	TaskRetWg     sync.WaitGroup
 }
 
 // NewPool will initialize a new pool
 func NewPool(size int) *Pool {
 	return &Pool{
-		size:        size,
-		taskSetting: NewTaskSetting(),
-		taskChan:    make(chan *Task),
-		TaskRetChan: make(chan *taskRetData),
+		size:          size,
+		priorityQueue: make([]*Task, 0),
+		taskSetting:   NewTaskSetting(),
+		taskChan:      make(chan *Task),
+		TaskRetChan:   make(chan *taskRetData),
 	}
 }
 
@@ -53,16 +57,46 @@ func (p *Pool) Run() {
 	for i := 0; i < p.size; i++ {
 		go p.worker()
 	}
+	go p.dispatcher()
 }
 
 // AddTask to task chan
-func (p *Pool) AddTask(taskID string, funcName string, args json.RawMessage) {
+func (p *Pool) AddTask(taskID string, funcName string, args json.RawMessage, priority int) {
 	p.taskWg.Add(1)
-	p.taskChan <- NewTask(
-		taskID,
-		p.taskSetting.funcMap[funcName],
-		args,
+	log.Printf("[Pool AddTask] taskID %s (%d)", taskID, priority)
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	p.priorityQueue = append(
+		p.priorityQueue,
+		NewTask(
+			taskID,
+			p.taskSetting.funcMap[funcName],
+			args,
+		),
 	)
+}
+
+func (p *Pool) dispatcher() {
+	for {
+		for {
+			p.mux.Lock()
+			log.Println(len(p.priorityQueue))
+			if len(p.priorityQueue) == 0 {
+				p.mux.Unlock()
+				break
+			}
+			p.passTaskToChan()
+			p.mux.Unlock()
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func (p *Pool) passTaskToChan() {
+	log.Printf("[Pool passTaskToChan] taskID %s", p.priorityQueue[0].id)
+	p.taskChan <- p.priorityQueue[0]
+	p.priorityQueue = p.priorityQueue[1:]
 }
 
 func (p *Pool) worker() {
@@ -99,7 +133,7 @@ func (p *Pool) setupCloseHandler() {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	go func() {
 		for sig := range c {
-			log.Printf("[setupCloseHandler] Captured %v", sig)
+			log.Printf("[Pool setupCloseHandler] Captured %v", sig)
 			p.End()
 			os.Exit(0)
 		}
